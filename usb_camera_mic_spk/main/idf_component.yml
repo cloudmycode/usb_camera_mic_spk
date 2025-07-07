@@ -1,0 +1,8 @@
+dependencies:
+  espressif/esp32_s3_usb_otg:
+    rules:
+    - if: target in [esp32s3]
+    version: ^1.5.1
+  idf: '>=4.4.1'
+  usb_stream:
+    version: '>=1.0.5'
