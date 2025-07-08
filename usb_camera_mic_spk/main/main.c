@@ -42,7 +42,7 @@ static const char *TAG = "uvc_mic_spk_demo";
 #endif
 
 #if (ENABLE_UAC_MIC_SPK_FUNCTION)
-#define ENABLE_UAC_MIC_SPK_LOOPBACK       0        /* 将麦克风数据传输到扬声器（回环） */
+#define ENABLE_UAC_MIC_SPK_LOOPBACK       1        /* 将麦克风数据传输到扬声器（回环） */
 
 // 麦克风音频参数全局变量
 static uint32_t s_mic_samples_frequence = 0;    // 麦克风采样频率
