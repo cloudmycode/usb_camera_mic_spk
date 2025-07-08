@@ -42,7 +42,7 @@ static const char *TAG = "uvc_mic_spk_demo";
 #endif
 
 #if (ENABLE_UAC_MIC_SPK_FUNCTION)
-#define ENABLE_UAC_MIC_SPK_LOOPBACK       1        /* 将麦克风数据传输到扬声器（回环） */
+#define ENABLE_UAC_MIC_SPK_LOOPBACK       0        /* 将麦克风数据传输到扬声器（回环） */
 
 // 麦克风音频参数全局变量
 static uint32_t s_mic_samples_frequence = 0;    // 麦克风采样频率
@@ -53,6 +53,10 @@ static uint32_t s_mic_bit_resolution = 0;       // 麦克风位分辨率
 static uint32_t s_spk_samples_frequence = 0;    // 扬声器采样频率
 static uint32_t s_spk_ch_num = 0;               // 扬声器声道数
 static uint32_t s_spk_bit_resolution = 0;       // 扬声器位分辨率
+
+// 音量控制变量
+static uint8_t s_speaker_volume = 0;            // 扬声器音量（0-100）- 设置为静音测试
+static uint8_t s_microphone_volume = 80;        // 麦克风音量（0-100）
 #endif
 
 // 事件组位定义 - 用于任务间同步
@@ -188,6 +192,38 @@ static void mic_frame_cb(mic_frame_t *frame, void *ptr)
 #endif //ENABLE_UAC_MIC_SPK_FUNCTION
 
 /**
+ * @brief 设置扬声器音量
+ * @param volume 音量值（0-100）
+ */
+static void set_speaker_volume(uint8_t volume)
+{
+    if (volume > 100) {
+        volume = 100;
+    }
+    s_speaker_volume = volume;
+    esp_err_t ret = usb_streaming_control(STREAM_UAC_SPK, CTRL_UAC_VOLUME, (void *)volume);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "Speaker volume set to %d%% successfully", volume);
+    } else {
+        ESP_LOGE(TAG, "Failed to set speaker volume to %d%%, error: %s", volume, esp_err_to_name(ret));
+    }
+}
+
+/**
+ * @brief 设置麦克风音量
+ * @param volume 音量值（0-100）
+ */
+static void set_microphone_volume(uint8_t volume)
+{
+    if (volume > 100) {
+        volume = 100;
+    }
+    s_microphone_volume = volume;
+    usb_streaming_control(STREAM_UAC_MIC, CTRL_UAC_VOLUME, (void *)volume);
+    ESP_LOGI(TAG, "Microphone volume set to %d%%", volume);
+}
+
+/**
  * @brief USB流状态变化回调函数 - 处理USB设备连接/断开事件
  * @param event 流状态事件
  * @param arg 用户参数
@@ -277,6 +313,10 @@ static void stream_state_changed_cb(usb_stream_state_t event, void *arg)
             
             // 设置扬声器启动事件
             xEventGroupSetBits(s_evt_handle, BIT3_SPK_START);
+            
+            // 立即设置音量
+            set_speaker_volume(s_speaker_volume);
+            set_microphone_volume(s_microphone_volume);
             
             if (s_spk_ch_num != 1) {
                 ESP_LOGW(TAG, "UAC SPK: only support 1 channel in this example");
@@ -406,9 +446,9 @@ void app_main(void)
         // 手动恢复扬声器，因为设置了SUSPEND_AFTER_START标志
         ESP_ERROR_CHECK(usb_streaming_control(STREAM_UAC_SPK, CTRL_RESUME, NULL));
         
-        // 设置扬声器和麦克风音量（80%）
-        usb_streaming_control(STREAM_UAC_SPK, CTRL_UAC_VOLUME, (void *)80);
-        usb_streaming_control(STREAM_UAC_MIC, CTRL_UAC_VOLUME, (void *)80);
+        // 设置扬声器和麦克风音量（使用全局变量）
+        set_speaker_volume(s_speaker_volume);    // 使用全局变量设置的音量
+        set_microphone_volume(s_microphone_volume); // 使用全局变量设置的音量
         ESP_LOGI(TAG, "speaker resume");
 
 #if (ENABLE_UAC_MIC_SPK_FUNCTION && !ENABLE_UAC_MIC_SPK_LOOPBACK)
